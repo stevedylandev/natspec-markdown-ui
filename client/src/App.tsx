@@ -5,7 +5,7 @@ import { markedUiExtension } from '@markdown-ui/marked-ext';
 import { createPublicClient, createWalletClient, custom, http } from "viem";
 import { sepolia } from "viem/chains";
 import { parseContractToMarkdown, type ContractResponse } from './utils/contractParser';
-import '@markdown-ui/react/widgets.css';
+import './App.css';
 
 
 const marked = new Marked().use(markedUiExtension);
