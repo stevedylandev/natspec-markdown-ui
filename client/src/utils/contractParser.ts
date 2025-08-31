@@ -14,6 +14,7 @@ interface DevDoc {
 
 interface ContractResponse {
   devdoc: DevDoc;
+  abi: any[];
   matchId?: string;
   creationMatch?: string;
   runtimeMatch?: string;

@@ -1,0 +1,6 @@
+{
+  "siteId": "fc1a09d0-a33a-4205-b746-9797226cdbc0",
+  "domain": "natspec-ui",
+  "buildCommand": "bun run build",
+  "buildDir": "dist"
+}
