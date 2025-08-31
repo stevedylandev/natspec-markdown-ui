@@ -1,40 +1,57 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { WagmiProvider, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { MarkdownUI } from '@markdown-ui/react';
 import { Marked } from 'marked';
 import { markedUiExtension } from '@markdown-ui/marked-ext';
-import { createPublicClient, createWalletClient, custom, http } from "viem";
-import { sepolia } from "viem/chains";
+import { config } from './wagmi-config';
 import { parseContractToMarkdown, type ContractResponse } from './utils/contractParser';
 import './App.css';
 
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <ContractApp />
+      </QueryClientProvider>
+    </WagmiProvider>
+  );
+}
+
+export default App;
 
 const marked = new Marked().use(markedUiExtension);
 
-const CONTRACT_ADDRESS = "0xEeF9B4a84C3327860CD14E1E066D7D6762b9bC3F";
+const CONTRACT_ADDRESS = "0xEeF9B4a84C3327860CD14E1E066D7D6762b9bC3F" as `0x${string}`;
 const CHAIN_ID = "11155111"; // Sepolia
 
-function App() {
+function ContractApp() {
   const [contractHtml, setContractHtml] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [contractData, setContractData] = useState<ContractResponse | null>(null);
-  const [counterValue, setCounterValue] = useState<bigint | undefined>();
 
-  const publicClient = createPublicClient({
-    chain: sepolia,
-    transport: http(),
+  // Use Wagmi hook to read the counter value
+  const { data: counterValue, refetch: refetchCounter } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: contractData?.abi || [],
+    functionName: 'number',
+    args: [],
+    query: {
+      enabled: !!contractData?.abi,
+    },
   });
 
+  // Use Wagmi hooks for writing to contract
+  const { data: hash, writeContract, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
 
-  const walletClient = typeof window !== 'undefined' && (window as any).ethereum 
-    ? createWalletClient({
-        chain: sepolia,
-        transport: custom((window as any).ethereum),
-      })
-    : null;
-
-  const handleWidgetEvent = async (event: { detail: { id: string, value: unknown } }) => {
-    if (!contractData || !walletClient) return;
+  const handleWidgetEvent = useCallback(async (event: { detail: { id: string, value: unknown } }) => {
+    if (!contractData) return;
 
     console.log('Widget event received:', event.detail);
 
@@ -42,59 +59,29 @@ function App() {
       const { id, value } = event.detail;
 
       if (id === 'setNumber') {
-        const newValue = BigInt((value as any)?.newValue || (value as string) || 0);
+        const newValue = BigInt((value as { newValue?: string })?.newValue || (value as string) || 0);
         console.log('Setting number to:', newValue);
 
-        const [account] = await walletClient.requestAddresses();
-
-        const { request } = await publicClient.simulateContract({
-          address: CONTRACT_ADDRESS as `0x${string}`,
+        writeContract({
+          address: CONTRACT_ADDRESS,
           abi: contractData.abi,
           functionName: 'setNumber',
           args: [newValue],
-          account,
         });
-
-        const hash = await walletClient.writeContract(request);
-        console.log('Transaction hash:', hash);
-        await readContractValue();
       } else if (id === 'increment') {
         console.log('Incrementing counter');
 
-        const [account] = await walletClient.requestAddresses();
-
-        const { request } = await publicClient.simulateContract({
-          address: CONTRACT_ADDRESS as `0x${string}`,
+        writeContract({
+          address: CONTRACT_ADDRESS,
           abi: contractData.abi,
           functionName: 'increment',
           args: [],
-          account,
         });
-
-        const hash = await walletClient.writeContract(request);
-        console.log('Transaction hash:', hash);
-        await readContractValue();
       }
     } catch (error) {
       console.error('Contract interaction error:', error);
     }
-  };
-
-  const readContractValue = async () => {
-    if (!contractData) return;
-
-    try {
-      const result = await publicClient.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: contractData.abi,
-        functionName: 'number',
-        args: [],
-      });
-      setCounterValue(result as unknown as bigint);
-    } catch (error) {
-      console.error('Contract read error:', error);
-    }
-  };
+  }, [contractData, writeContract]);
 
   useEffect(() => {
     const fetchContractData = async () => {
@@ -127,11 +114,12 @@ function App() {
     fetchContractData();
   }, []);
 
+  // Refetch counter value when transaction is confirmed
   useEffect(() => {
-    if (contractData) {
-      readContractValue();
+    if (isConfirmed) {
+      refetchCounter();
     }
-  }, [contractData]);
+  }, [isConfirmed, refetchCounter]);
 
   useEffect(() => {
     if (!contractHtml) return;
@@ -166,8 +154,7 @@ function App() {
     return () => {
       clearTimeout(timer);
     };
-  }, [contractHtml, contractData, walletClient]);
-
+  }, [contractHtml, contractData, handleWidgetEvent]);
 
   if (loading) {
     return (
@@ -192,9 +179,32 @@ function App() {
           <p className="text-lg font-semibold">Current Counter: {counterValue.toString()}</p>
         </div>
       )}
+      {isPending && (
+        <div className="text-center mb-4">
+          <p className="text-blue-500">Transaction pending...</p>
+        </div>
+      )}
+      {isConfirming && (
+        <div className="text-center mb-4">
+          <p className="text-yellow-500">Waiting for confirmation...</p>
+        </div>
+      )}
+      {isConfirmed && hash && (
+        <div className="text-center mb-4">
+          <p className="text-green-500">Transaction confirmed!</p>
+          <p className="text-sm text-gray-600 break-all">
+            Hash: <a 
+              href={`https://sepolia.etherscan.io/tx/${hash}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:text-blue-700 underline"
+            >
+              {hash}
+            </a>
+          </p>
+        </div>
+      )}
       <MarkdownUI html={contractHtml} />
     </div>
   );
 }
-
-export default App;

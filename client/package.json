@@ -13,6 +13,7 @@
     "@markdown-ui/marked-ext": "^1.1.11",
     "@markdown-ui/react": "^0.1.12",
     "@tailwindcss/vite": "^4.1.10",
+    "@tanstack/react-query": "^5.62.11",
     "contracts": "workspace:*",
     "marked": "^16.2.1",
     "react": "^19.1.0",
@@ -20,7 +21,7 @@
     "server": "workspace:*",
     "shared": "workspace:*",
     "tailwindcss": "^4.1.10",
-    "viem": "^2.36.0"
+    "wagmi": "^2.15.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
