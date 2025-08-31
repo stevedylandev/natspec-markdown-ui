@@ -11,21 +11,21 @@ contract Counter {
 
     /// @notice Sets the counter to a specific value
     /// @dev Updates the number state variable to the provided value
-    /// @param newNumber The new value to set the counter to
-    /// 
-    /// ```markdown-ui-widget
-    /// { "type": "form", "id": "setNumber", "submitLabel": "Set Number", "fields": [{ "type": "text-input", "id": "newValue", "label": "New Counter Value", "placeholder": "Enter number", "default": "42" }] }
-    /// ```
+    /// @param newNumber The new value to set the counter to \n
+    /// \n 
+    /// ```markdown-ui-widget \n
+    /// { "type": "form", "id": "setNumber", "submitLabel": "Set Number", "fields": [{ "type": "text-input", "id": "newValue", "label": "New Counter Value", "placeholder": "Enter number", "default": "42" }] } \n
+    /// ``` \n
     function setNumber(uint256 newNumber) public {
         number = newNumber;
     }
 
     /// @notice Increments the counter by 1
-    /// @dev Increases the number state variable by 1 using the increment operator
-    /// 
-    /// ```markdown-ui-widget
-    /// { "type": "form", "id": "increment", "submitLabel": "Increment", "fields": [] }
-    /// ```
+    /// @dev Increases the number state variable by 1 using the increment operator \n
+    /// \n
+    /// ```markdown-ui-widget \n
+    /// { "type": "form", "id": "increment", "submitLabel": "Increment", "fields": [] } \n
+    /// ```\n
     function increment() public {
         number++;
     }
